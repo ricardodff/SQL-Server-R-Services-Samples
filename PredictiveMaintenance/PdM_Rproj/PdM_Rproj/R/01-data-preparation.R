@@ -7,15 +7,14 @@
 ## Input : The csv files of train, test and truth data
 ## Output: train-Features and test-Features SQL tables for further model training
 ####################################################################################################
-file_path <- "../Data"
+file_path <- "./Data"
 ####################################################################################################
 ## Compute context
 ####################################################################################################
-connection_string <- "Driver=SQL Server;
-                      Server=[SQL server name];
-                      Database=[Database Name];
-                      UID=[UserName];
-                      PWD=[Password]"
+connection_string <- "Driver=SQL Server;Server=INNOWAVE-169;Database=PdM_Sample;Trusted_Connection=True"
+#;
+#                      UID=RProj_Sample;
+#                      PWD=pass"
 sql_share_directory <- paste("c:\\AllShare\\", Sys.getenv("USERNAME"), sep = "")
 dir.create(sql_share_directory, recursive = TRUE, showWarnings = FALSE)
 sql <- RxInSqlServer(connectionString = connection_string, 
@@ -108,6 +107,14 @@ rxDataStep(inData = truth_data_text,
            outFile = truth_data_table,
            overwrite = TRUE)
 
+
+
+## ricardo code
+library(plyr)
+library(dplyr)
+local_train_data <- rxImport(train_data_table, numRows = 10)
+dim(local_train_data)
+
 ####################################################################################################
 ## Data labeling
 ## Three set of labels will be generated based on the models we use:
@@ -119,11 +126,11 @@ rxDataStep(inData = truth_data_text,
 ##                             fail within the window [1, w0] cycles or to fail within the 
 ##                             window [w0+1, w1] cycles, or it will not fail within w1 cycles? 
 ####################################################################################################
-library(plyr)
+#library(plyr)
 data_label <- function(data) { 
   data <- as.data.frame(data)  
   max_cycle <- plyr::ddply(data, "id", plyr::summarise, max = max(cycle))
-  if (!is.null(truth)) {
+  if (!is.null(truth)) { #truth i suppose is like 
     max_cycle <- plyr::join(max_cycle, truth, by = "id")
     max_cycle$max <- max_cycle$max + max_cycle$RUL
     max_cycle$RUL <- NULL
@@ -151,7 +158,12 @@ tagged_table_train = RxSqlServerData(table = tagged_table_name,
 inDataSource <- RxSqlServerData(table = train_table_name, 
                                 connectionString = connection_string, 
                                 colClasses = train_columns,
-                                rowsPerRead=30000)
+                                rowsPerRead = 30000)
+
+train_data_table <- RxSqlServerData(table = train_table_name,
+                                    connectionString = connection_string,
+                                    colClasses = train_columns)
+
 rxDataStep(inData = inDataSource, 
            outFile = tagged_table_train,  
            overwrite = TRUE,
